@@ -1,94 +1,79 @@
-import argparse
-from pathlib import Path
 from lexer.lexer import Lexer
-from lexer.token_type import TokenType
-from parser.declaration_parser import DeclarationParser
+from parser.parser import Parser
 from utils.error_handler import CompilerError
 
-def run_lexer(file_path: Path) -> None:
-    """Ejecuta solo el análisis léxico"""
-    with open(file_path, 'r') as file:
-        code = file.read()
+def test_parser(code: str) -> None:
+    """Prueba el análisis de una expresión y muestra el proceso paso a paso"""
+    print("\n" + "="*50)
+    print(f"Analizando: {code}")
+    print("="*50)
     
     try:
+        # Análisis léxico
+        print("\n1. Análisis Léxico:")
+        print("-"*20)
         lexer = Lexer(code)
         tokens = lexer.tokenize()
-        print("\nAnálisis léxico exitoso. Tokens encontrados:")
-        print("-" * 50)
         for token in tokens:
-            if token.type not in {TokenType.NEWLINE, TokenType.EOF}:
-                print(token)
-        print("-" * 50)
-    except CompilerError as e:
-        print(f"\nError en el análisis léxico: {e}")
-
-def run_parser(file_path: Path) -> None:
-    """Ejecuta el análisis léxico y sintáctico"""
-    with open(file_path, 'r') as file:
-        code = file.read()
-    
-    try:
-        # Primero hacemos el análisis léxico
-        print("\nIniciando análisis léxico...")
-        lexer = Lexer(code)
-        tokens = lexer.tokenize()
-        print("Análisis léxico completado.")
+            print(f"  {token}")
         
-        # Luego el análisis sintáctico
-        print("\nIniciando análisis sintáctico...")
-        parser = DeclarationParser(tokens)
-        parser.parse()
-        print("Análisis sintáctico completado exitosamente.")
+        # Análisis sintáctico
+        print("\n2. Análisis Sintáctico:")
+        print("-"*20)
+        parser = Parser(tokens)
+        parser.expression()
+        print("✓ Expresión sintácticamente correcta")
+        
     except CompilerError as e:
-        print(f"\nError en la compilación: {e}")
-        return
-
-def run_compiler(file_path: Path) -> None:
-    """Ejecuta el proceso completo de compilación"""
-    print("Proceso completo de compilación (por implementar)")
-    # TODO: Implementar cuando tengamos más componentes
+        print(f"\n❌ Error: {e}")
 
 def main():
-    # Configurar el parser de argumentos
-    parser = argparse.ArgumentParser(
-        description='Compilador de C simplificado',
-        formatter_class=argparse.RawTextHelpFormatter
-    )
+    # Lista de expresiones para probar
+    expressions = [
+        # Expresiones simples
+        "42",
+        "3.14",
+        "'a'",
+        '"hello"',
+        
+        # Operaciones aritméticas
+        "1 + 2",
+        "3 - 4",
+        "5 * 6",
+        "8 / 2",
+        "1 + 2 * 3",
+        "(1 + 2) * 3",
+        
+        # Operaciones lógicas
+        "x > 0",
+        "x >= 1",
+        "y < 10",
+        "a == b",
+        "x > 0 && y < 10",
+        
+        # Llamadas a funciones
+        "foo()",
+        "bar(1, 2)",
+        "baz(1 + 2, x * y)",
+        
+        # Expresiones complejas
+        "1 + 2 * 3 + (4 * 5) / 2",
+        "foo(bar(1, 2 + 3), 4 * 5) + 3",
+        "(x > 0 && y < 10) || z == 0",
+        
+        # Expresiones con errores
+        "1 +",
+        "foo(,)",
+        "(1 + 2",
+        "1 2 3",
+    ]
     
-    # Agregar argumentos
-    parser.add_argument(
-        'file',
-        type=str,
-        help='Archivo fuente a compilar'
-    )
-    
-    parser.add_argument(
-        '--mode',
-        type=str,
-        choices=['lexer', 'parser', 'compiler'],
-        default='compiler',
-        help='''Modo de ejecución:
-lexer    - Solo análisis léxico
-parser   - Análisis léxico y sintáctico
-compiler - Proceso completo de compilación (default)'''
-    )
-    
-    # Parsear argumentos
-    args = parser.parse_args()
-    
-    # Verificar que el archivo existe
-    file_path = Path(args.file)
-    if not file_path.exists():
-        print(f"Error: No se encontró el archivo '{args.file}'")
-        return
-    
-    # Ejecutar el modo seleccionado
-    if args.mode == 'lexer':
-        run_lexer(file_path)
-    elif args.mode == 'parser':
-        run_parser(file_path)
-    else:  # compiler
-        run_compiler(file_path)
+    # Prueba cada expresión
+    for expr in expressions:
+        test_parser(expr)
+        input("\nPresiona Enter para continuar...")  # Pausa para revisar resultados
 
 if __name__ == "__main__":
+    print("Prueba del Parser - Presiona Ctrl+C para salir")
+    print("Cada expresión se analizará paso a paso.")
     main()
