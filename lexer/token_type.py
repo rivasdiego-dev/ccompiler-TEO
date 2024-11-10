@@ -11,8 +11,15 @@ class TokenType(Enum):
     WHILE = auto()
     DO = auto()
     RETURN = auto()
-    PRINTF = auto()
-    SCANF = auto()
+    
+    # Funciones de I/O
+    PRINT_INT = auto()    # printInt
+    PRINT_FLOAT = auto()  # printFloat
+    PRINT_CHAR = auto()   # printChar
+    PRINT_STR = auto()    # printStr
+    SCAN_INT = auto()     # scanInt
+    SCAN_FLOAT = auto()   # scanFloat
+    SCAN_CHAR = auto()    # scanChar
     
     # Operadores aritméticos
     PLUS = auto()
