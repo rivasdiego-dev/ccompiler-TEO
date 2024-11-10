@@ -12,3 +12,7 @@ class CompilerError(Exception):
 class LexicalError(CompilerError):
     """Error específico para el análisis léxico"""
     pass
+
+class ParserError(CompilerError):
+    """Error específico para el análisis sintáctico"""
+    pass
