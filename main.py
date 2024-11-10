@@ -56,6 +56,24 @@ def main():
             printInt(factorial(num));
         }
         """,
+        # Programa con variables globales
+        """
+        // Variables globales
+        int MAX_SIZE = 100;
+        float pi = 3.14159;
+        char separator = ';';
+        int counter;  // Sin inicialización
+
+        // Funciones que usan las variables globales
+        int getMaxSize() {
+            return MAX_SIZE;
+        }
+
+        void main() {
+            counter = 0;
+            printInt(getMaxSize());
+        }
+        """,
         
         # Programa con todas las estructuras de control
         """

@@ -7,24 +7,98 @@ class Parser:
     def __init__(self, tokens: List[Token]):
         self.tokens = tokens
         self.current = 0
+        self.has_main_function = False
     
     def function_list(self) -> None:
         """FunctionList → Function FunctionList | ε"""
         while not self.is_at_end():
             if self.is_function_declaration():
+                # Verificar si es la función main antes de parsearla
+                if self.is_main_function():
+                    self.has_main_function = True
                 self.function()
             else:
                 break
+
+    def is_main_function(self) -> bool:
+        """Verifica si la siguiente función es main()"""
+        if not self.is_type_token(self.peek()):
+            return False
+        
+        # Guardar posición actual
+        saved_pos = self.current
+        try:
+            self.advance()  # tipo (void, int, etc)
+            if not self.check(TokenType.ID):
+                return False
+            return self.peek().value == "main"
+        finally:
+            self.current = saved_pos
     
     def program(self) -> None:
-        """Program → FunctionList"""
-        self.function_list()
-        if not self.is_at_end():
+        """
+        Program → GlobalDeclaration* FunctionList
+        Un programa puede tener declaraciones globales seguidas de funciones.
+        """
+        # Verificar que el programa no esté vacío
+        if self.is_at_end():
             raise ParserError(
-                "Se esperaban más declaraciones de funciones o fin de archivo",
+                "El programa está vacío",
                 self.peek().line,
                 self.peek().column
             )
+
+        # Procesar declaraciones globales
+        while not self.is_at_end() and self.is_global_declaration():
+            self.global_declaration()
+
+        # Procesar funciones
+        self.function_list()
+
+        # Verificar que existe una función main
+        if not self.has_main_function:
+            raise ParserError(
+                "No se encontró la función 'main'",
+                self.previous().line,
+                self.previous().column
+            )
+
+    def is_global_declaration(self) -> bool:
+        """
+        Verifica si los siguientes tokens forman una declaración global.
+        """
+        if not self.is_type_token(self.peek()):
+            return False
+        
+        # Necesitamos ver más adelante sin consumir tokens
+        saved_pos = self.current
+        try:
+            self.advance()  # tipo
+            if not self.check(TokenType.ID):
+                return False
+            self.advance()  # identificador
+            # Si sigue un paréntesis, es una función, no una declaración global
+            return not self.check(TokenType.LPAREN)
+        finally:
+            self.current = saved_pos
+
+    def global_declaration(self) -> None:
+        """GlobalDeclaration → Type ID ['=' Expression] ';'"""
+        # Guardar el token de tipo para mensajes de error
+        type_token = self.peek()
+        self.type()  # Consume el tipo
+        
+        # Consumir el identificador
+        id_token = self.consume(TokenType.ID, 
+            f"Se esperaba un identificador después de '{type_token.value}'")
+        
+        # Inicialización opcional
+        if self.match(TokenType.ASSIGN):
+            self.expression()
+        
+        # Toda declaración global debe terminar en punto y coma
+        self.consume(TokenType.SEMICOLON, 
+            f"Se esperaba ';' después de la declaración de '{id_token.value}'")
 
     def parse(self) -> None:
         """
