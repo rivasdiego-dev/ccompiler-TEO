@@ -3,9 +3,11 @@ from parser.parser import Parser
 from utils.error_handler import CompilerError
 
 def test_parser(code: str) -> None:
-    """Prueba el análisis de una expresión y muestra el proceso paso a paso"""
+    """
+    Prueba el análisis de un programa completo
+    """
     print("\n" + "="*50)
-    print(f"Analizando: {code}")
+    print(f"Analizando programa:\n{code}")
     print("="*50)
     
     try:
@@ -21,59 +23,89 @@ def test_parser(code: str) -> None:
         print("\n2. Análisis Sintáctico:")
         print("-"*20)
         parser = Parser(tokens)
-        parser.expression()
-        print("✓ Expresión sintácticamente correcta")
+        parser.parse()
+        print("✓ Programa sintácticamente correcto")
         
     except CompilerError as e:
         print(f"\n❌ Error: {e}")
 
 def main():
-    # Lista de expresiones para probar
-    expressions = [
-        # Expresiones simples
-        "42",
-        "3.14",
-        "'a'",
-        '"hello"',
+    # Programas de prueba
+    test_cases = [
+        # Programa simple con una función
+        """
+        void main() {
+            int x = 0;
+            printInt(x);
+        }
+        """,
         
-        # Operaciones aritméticas
-        "1 + 2",
-        "3 - 4",
-        "5 * 6",
-        "8 / 2",
-        "1 + 2 * 3",
-        "(1 + 2) * 3",
+        # Programa con múltiples funciones
+        """
+        int factorial(int n) {
+            if (n <= 1) {
+                return 1;
+            }
+            return n * factorial(n - 1);
+        }
+
+        void main() {
+            int num;
+            printStr("Ingrese un numero: ");
+            num = scanInt();
+            printInt(factorial(num));
+        }
+        """,
         
-        # Operaciones lógicas
-        "x > 0",
-        "x >= 1",
-        "y < 10",
-        "a == b",
-        "x > 0 && y < 10",
+        # Programa con todas las estructuras de control
+        """
+        void testControl() {
+            int i = 0;
+            
+            // while loop
+            while (i < 5) {
+                printInt(i);
+                i = i + 1;
+            }
+            
+            // do-while loop
+            do {
+                i = i - 1;
+                printInt(i);
+            } while (i > 0);
+            
+            // if-else
+            if (i == 0) {
+                printStr("Cero");
+            } else {
+                printStr("No cero");
+            }
+        }
         
-        # Llamadas a funciones
-        "foo()",
-        "bar(1, 2)",
-        "baz(1 + 2, x * y)",
+        void main() {
+            testControl();
+        }
+        """,
         
-        # Expresiones complejas
-        "1 + 2 * 3 + (4 * 5) / 2",
-        "foo(bar(1, 2 + 3), 4 * 5) + 3",
-        "(x > 0 && y < 10) || z == 0",
+        # Programa con errores comunes
+        """
+        void main() {
+            int x = ;  // Error: falta expresión
+        }
+        """,
         
-        # Expresiones con errores
-        "1 +",
-        "foo(,)",
-        "(1 + 2",
-        "1 2 3",
+        """
+        int test(int x, ) {  // Error: parámetro inválido
+            return x;
+        }
+        """
     ]
     
-    # Prueba cada expresión
-    for expr in expressions:
-        test_parser(expr)
-        input("\nPresiona Enter para continuar...")  # Pausa para revisar resultados
+    # Prueba cada caso
+    for code in test_cases:
+        test_parser(code)
+        input("\nPresiona Enter para continuar...")
 
 if __name__ == "__main__":
     print("Prueba del Parser - Presiona Ctrl+C para salir")
-    print("Cada expresión se analizará paso a paso.")
     main()
