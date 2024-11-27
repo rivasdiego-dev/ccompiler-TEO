@@ -27,6 +27,24 @@ class SemanticAnalyzer:
             line,
             column
         )
+    
+    def enter_global_scope(self) -> None:
+        """Inicializa el ámbito global"""
+        self.symbol_table = SymbolTable()
+        self.current_return_type = None
+
+    def enter_scope(self) -> None:
+        """Entra a un nuevo ámbito"""
+        self.symbol_table.enter_scope()
+
+    def exit_scope(self) -> None:
+        """Sale del ámbito actual"""
+        self.symbol_table.exit_scope()
+
+    def synchronize(self) -> None:
+        """Sincroniza el estado del analizador semántico después de un error"""
+        # Por ahora solo reiniciamos el estado
+        self.current_return_type = None
 
     def enter_function(self, return_type: DataType, name: str, line: int, column: int) -> None:
         """Llamado cuando el parser entra a una función"""
@@ -58,6 +76,19 @@ class SemanticAnalyzer:
     def check_function_exists(self, name: str, line: int, column: int) -> Function:
         """Verifica que una función exista cuando se llama"""
         return self.symbol_table.get_function(name, line, column)
+
+    def can_compare(self, type1: DataType, type2: DataType) -> bool:
+        """Verifica si dos tipos pueden ser comparados entre sí"""
+        # Tipos iguales siempre pueden compararse
+        if type1 == type2:
+            return True
+        
+        # INT y FLOAT pueden compararse entre sí
+        if (type1 in {DataType.INT, DataType.FLOAT} and 
+            type2 in {DataType.INT, DataType.FLOAT}):
+            return True
+        
+        return False
 
     def check_function_call(self, name: str, args: list, line: int, column: int) -> DataType:
         """Verifica una llamada a función"""
