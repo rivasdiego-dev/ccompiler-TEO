@@ -1,13 +1,16 @@
 from typing import List, Optional, Set
 from lexer.token import Token
 from lexer.token_type import TokenType
-from utils.error_handler import ParserError
+from utils.error_handler import ParserError, SemanticError
+from semantic.analyzer import SemanticAnalyzer
+from semantic.types import DataType, Variable, Function
 
 class Parser:
     def __init__(self, tokens: List[Token]):
         self.tokens = tokens
         self.current = 0
         self.has_main_function = False
+        self.semantic_analyzer = SemanticAnalyzer()
     
     def function_list(self) -> None:
         """FunctionList → Function FunctionList | ε"""
@@ -36,18 +39,17 @@ class Parser:
             self.current = saved_pos
     
     def program(self) -> None:
-        """
-        Program → GlobalDeclaration* FunctionList
-        Un programa puede tener declaraciones globales seguidas de funciones.
-        """
-        # Verificar que el programa no esté vacío
+        """Program → GlobalDeclaration* FunctionList"""
         if self.is_at_end():
             raise ParserError(
                 "El programa está vacío",
                 self.peek().line,
                 self.peek().column
             )
-
+        
+        # Iniciar ámbito global
+        self.semantic_analyzer.enter_global_scope()
+        
         # Procesar declaraciones globales
         while not self.is_at_end() and self.is_global_declaration():
             self.global_declaration()
@@ -84,22 +86,42 @@ class Parser:
 
     def global_declaration(self) -> None:
         """GlobalDeclaration → Type ID ['=' Expression] ';'"""
-        # Guardar el token de tipo para mensajes de error
+        # Obtener el tipo
         type_token = self.peek()
+        data_type = self.get_data_type(type_token.type)
         self.type()  # Consume el tipo
         
         # Consumir el identificador
         id_token = self.consume(TokenType.ID, 
             f"Se esperaba un identificador después de '{type_token.value}'")
         
+        # Registrar la variable en la tabla de símbolos
+        initialized = False
+        
         # Inicialización opcional
         if self.match(TokenType.ASSIGN):
-            self.expression()
+            expr_type = self.expression()
+            self.semantic_analyzer.check_types(
+                data_type, 
+                expr_type,
+                id_token.line,
+                id_token.column
+            )
+            initialized = True
         
-        # Toda declaración global debe terminar en punto y coma
+        # Declarar la variable global
+        self.semantic_analyzer.declare_variable(
+            data_type,
+            id_token.value,
+            initialized,
+            id_token.line,
+            id_token.column
+        )
+        
+        # Verificar punto y coma
         self.consume(TokenType.SEMICOLON, 
             f"Se esperaba ';' después de la declaración de '{id_token.value}'")
-
+    
     def parse(self) -> None:
         """
         Punto de entrada principal del parser.
@@ -171,6 +193,22 @@ class Parser:
     def peek(self) -> Token:
         return self.tokens[self.current]
 
+    def get_data_type(self, token_type: TokenType) -> DataType:
+        """Convierte un TokenType a DataType"""
+        type_map = {
+            TokenType.INT: DataType.INT,
+            TokenType.FLOAT: DataType.FLOAT,
+            TokenType.CHAR: DataType.CHAR,
+            TokenType.VOID: DataType.VOID
+        }
+        if token_type not in type_map:
+            raise ParserError(
+                f"Tipo de dato no válido: {token_type}",
+                self.peek().line,
+                self.peek().column
+            )
+        return type_map[token_type]
+
     def previous(self) -> Token:
         return self.tokens[self.current - 1]
 
@@ -205,19 +243,26 @@ class Parser:
         )
 
     def synchronize(self) -> None:
+        """Sincroniza el parser y el analizador semántico después de un error"""
         self.advance()
 
+        # Sincronización sintáctica
         while not self.is_at_end():
             if self.previous().type == TokenType.SEMICOLON:
+                # Si encontramos el fin de una declaración, podemos recuperarnos
+                self.semantic_analyzer.synchronize()
                 return
 
             if self.peek().type in {
                 TokenType.INT, TokenType.CHAR, TokenType.FLOAT, TokenType.VOID,
                 TokenType.IF, TokenType.WHILE, TokenType.DO, TokenType.RETURN
             }:
+                # Si encontramos el inicio de una nueva construcción
+                self.semantic_analyzer.synchronize()
                 return
 
             self.advance()
+
         try:
             self.program()
             if not self.is_at_end():
@@ -231,7 +276,55 @@ class Parser:
         except Exception as e:
             current_token = self.peek()
             raise ParserError(str(e), current_token.line, current_token.column)
-
+    
+    def verify_type_compatibility(self, expected: DataType, found: DataType, token: Token) -> None:
+        """Verifica la compatibilidad de tipos usando el analizador semántico"""
+        try:
+            self.semantic_analyzer.check_types(expected, found, token.line, token.column)
+        except SemanticError as e:
+            # Opcionalmente, podemos manejar el error aquí o dejarlo propagar
+            raise e
+    
+    def get_expression_type(self, token: Token) -> DataType:
+        """Determina el tipo de dato de un token literal o identificador"""
+        if token.type == TokenType.INTEGER_LITERAL:
+            return DataType.INT
+        elif token.type == TokenType.FLOAT_LITERAL:
+            return DataType.FLOAT
+        elif token.type == TokenType.CHAR_LITERAL:
+            return DataType.CHAR
+        elif token.type == TokenType.ID:
+            # Buscar el tipo en la tabla de símbolos
+            variable = self.semantic_analyzer.check_variable_exists(
+                token.value, 
+                token.line, 
+                token.column
+            )
+            return variable.type
+        else:
+            raise ParserError(
+                f"No se puede determinar el tipo de '{token.value}'",
+                token.line,
+                token.column
+            )
+    
+    def verify_variable_initialization(self, var_name: str, token: Token) -> None:
+        """Verifica que una variable esté inicializada antes de su uso"""
+        try:
+            variable = self.semantic_analyzer.check_variable_exists(
+                var_name,
+                token.line,
+                token.column
+            )
+            if not variable.initialized:
+                raise SemanticError(
+                    f"Variable '{var_name}' usada sin inicializar",
+                    token.line,
+                    token.column
+                )
+        except SemanticError as e:
+            raise e
+    
     # Implementación de expresiones (nivel más bajo)
     def expression(self) -> None:
         """Expression → LogicExpr"""
@@ -447,15 +540,33 @@ class Parser:
     
     def function(self) -> None:
         """Function → Type ID '(' ParameterList ')' CompoundStmt"""
-        self.type()  # Retorno de la función
-        function_name = self.consume(TokenType.ID, "Se esperaba un nombre de función")
+        # Obtener tipo de retorno
+        return_type = self.get_data_type(self.peek().type)
+        self.type()  # Consume el tipo
         
-        self.consume(TokenType.LPAREN, f"Se esperaba '(' después de '{function_name.value}'")
+        # Obtener nombre de la función
+        function_name = self.consume(TokenType.ID, 
+            "Se esperaba un nombre de función")
+        
+        # Registrar la función y entrar en su ámbito
+        self.semantic_analyzer.enter_function(
+            return_type,
+            function_name.value,
+            function_name.line,
+            function_name.column
+        )
+        
+        self.consume(TokenType.LPAREN, 
+            f"Se esperaba '(' después de '{function_name.value}'")
         self.parameter_list()
-        self.consume(TokenType.RPAREN, "Se esperaba ')' después de los parámetros")
+        self.consume(TokenType.RPAREN, 
+            "Se esperaba ')' después de los parámetros")
         
-        # Cuerpo de la función
+        # Procesar el cuerpo de la función
         self.compound_stmt()
+        
+        # Salir del ámbito de la función
+        self.semantic_analyzer.exit_function()
 
     def parameter_list(self) -> None:
         """ParameterList → Parameter ParameterListTail | ε"""
