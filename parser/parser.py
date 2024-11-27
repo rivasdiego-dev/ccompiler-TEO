@@ -183,9 +183,20 @@ class Parser:
 
     def function_call_stmt(self) -> None:
         """FunctionCallStmt → ID '(' ArgumentList ')' ';'"""
-        self.consume(TokenType.ID, "Se esperaba un identificador")
+        id_token = self.consume(TokenType.ID, "Se esperaba un identificador")
         self.consume(TokenType.LPAREN, "Se esperaba '(' después del identificador")
-        self.argument_list()
+        
+        # Obtener los tipos de los argumentos
+        arg_types = self.argument_list()
+        
+        # Verificar la llamada a función
+        self.semantic_analyzer.check_function_call(
+            id_token.value,
+            arg_types,
+            id_token.line,
+            id_token.column
+        )
+        
         self.consume(TokenType.RPAREN, "Se esperaba ')'")
         self.consume(TokenType.SEMICOLON, "Se esperaba ';' después de la llamada a función")
 
@@ -455,8 +466,10 @@ class Parser:
         elif self.match(TokenType.ID):
             id_token = self.previous()
             if self.check(TokenType.LPAREN):
+                # Es una llamada a función
                 return self.factor_tail(id_token)
             else:
+                # Es una variable
                 variable = self.semantic_analyzer.check_variable_exists(
                     id_token.value,
                     id_token.line,
@@ -473,6 +486,8 @@ class Parser:
         elif self.match(TokenType.INTEGER_LITERAL):
             return DataType.INT
         elif self.match(TokenType.FLOAT_LITERAL):
+            token = self.previous()  # Obtener el token actual
+            # Asegurarnos de guardar el tipo float para usarlo en las verificaciones
             return DataType.FLOAT
         elif self.match(TokenType.CHAR_LITERAL):
             return DataType.CHAR
@@ -504,8 +519,11 @@ class Parser:
         """ArgumentList → Expression ArgumentListTail | ε"""
         arg_types = []
         if not self.check(TokenType.RPAREN):
-            arg_types.append(self.expression())
-            arg_types.extend(self.argument_list_tail())
+            expr_type = self.expression()
+            arg_types.append(expr_type)
+            while self.match(TokenType.COMMA):
+                expr_type = self.expression()
+                arg_types.append(expr_type)
         return arg_types
 
     def argument_list_tail(self) -> List[DataType]:
@@ -823,12 +841,14 @@ class Parser:
                 TokenType.PRINT_STR: DataType.CHAR,
             }[io_token.type]
             
-            self.semantic_analyzer.check_types(
-                expected_type,
-                expr_type,
-                io_token.line,
-                io_token.column
-            )
+            # No permitir conversiones implícitas para funciones de I/O
+            if expected_type != expr_type:
+                raise SemanticError(
+                    f"Tipo incompatible en función {io_token.value}: "
+                    f"se esperaba {expected_type.name}, se encontró {expr_type.name}",
+                    io_token.line,
+                    io_token.column
+                )
         
         self.consume(TokenType.RPAREN, f"Se esperaba ')' después de {io_token.value}")
         self.consume(TokenType.SEMICOLON, f"Se esperaba ';' después de {io_token.value}")

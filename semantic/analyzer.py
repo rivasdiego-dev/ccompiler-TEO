@@ -8,6 +8,8 @@ class SemanticAnalyzer:
     def __init__(self):
         self.symbol_table = SymbolTable()
         self.current_return_type: Optional[DataType] = None
+        self.is_function_context = False  # Para llamadas a funciones
+        self.is_io_context = False  # Para operaciones de I/O
 
     def analyze(self, parser) -> None:
         """
@@ -20,16 +22,18 @@ class SemanticAnalyzer:
         """Verifica que los tipos sean compatibles"""
         if expected == found:
             return
-        if expected == DataType.FLOAT and found == DataType.INT:
-            return  # Conversión implícita permitida de INT a FLOAT
-        
-        # Para el caso de asignaciones numéricas
-        if (expected == DataType.INT and found == DataType.FLOAT):
+            
+        # Para llamadas a funciones y operaciones de I/O, no permitimos conversiones implícitas
+        if self.is_function_context or self.is_io_context:
             raise SemanticError(
-                f"No se puede asignar {found.name} a {expected.name} sin conversión explícita",
+                f"Tipo incompatible: se esperaba {expected.name} pero se encontró {found.name}",
                 line,
                 column
             )
+        
+        # Para asignaciones normales, permitir solo la conversión de INT a FLOAT
+        if expected == DataType.FLOAT and found == DataType.INT:
+            return  # Conversión implícita permitida de INT a FLOAT
         
         raise SemanticError(
             f"Tipo incompatible: se esperaba {expected.name} pero se encontró {found.name}",
@@ -123,7 +127,13 @@ class SemanticAnalyzer:
             )
         
         for i, (param, arg_type) in enumerate(zip(func.parameters, args)):
-            self.check_types(param.type, arg_type, line, column)
+            # Remover la conversión implícita para llamadas a funciones
+            if param.type != arg_type:
+                raise SemanticError(
+                    f"Tipo de argumento incompatible en posición {i+1}. "
+                    f"Se esperaba {param.type.name}, se recibió {arg_type.name}",
+                    line, column
+                )
         
         return func.return_type
 
