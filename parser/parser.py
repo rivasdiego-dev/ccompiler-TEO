@@ -549,62 +549,156 @@ class Parser:
 
     def declaration_stmt(self) -> None:
         """DeclarationStmt → Type ID ['=' Expression] ';'"""
-        self.type()  # Consume el tipo
+        # Obtener el tipo de la variable
+        type_token = self.peek()
+        data_type = self.get_data_type(type_token.type)
+        self.type()
+        
+        # Obtener el identificador
         id_token = self.consume(TokenType.ID, "Se esperaba un identificador")
         
+        initialized = False
         # Inicialización opcional
         if self.match(TokenType.ASSIGN):
-            self.expression()
+            expr_type = self.expression()
+            # Verificar compatibilidad de tipos
+            self.semantic_analyzer.check_types(
+                data_type,
+                expr_type,
+                id_token.line,
+                id_token.column
+            )
+            initialized = True
+        
+        # Declarar la variable en el ámbito actual
+        self.semantic_analyzer.declare_variable(
+            data_type,
+            id_token.value,
+            initialized,
+            id_token.line,
+            id_token.column
+        )
         
         self.consume(TokenType.SEMICOLON, "Se esperaba ';' después de la declaración")
 
     def assignment_stmt(self) -> None:
         """AssignmentStmt → ID '=' Expression ';'"""
-        self.consume(TokenType.ID, "Se esperaba un identificador")
+        id_token = self.consume(TokenType.ID, "Se esperaba un identificador")
         self.consume(TokenType.ASSIGN, "Se esperaba '=' después del identificador")
-        self.expression()
+        
+        # Verificar que la variable existe
+        variable = self.semantic_analyzer.check_variable_exists(
+            id_token.value,
+            id_token.line,
+            id_token.column
+        )
+        
+        # Obtener el tipo de la expresión
+        expr_type = self.expression()
+        
+        # Verificar compatibilidad de tipos
+        self.semantic_analyzer.check_types(
+            variable.type,
+            expr_type,
+            id_token.line,
+            id_token.column
+        )
+        
+        # Marcar la variable como inicializada
+        self.semantic_analyzer.analyze_assignment(
+            id_token.value,
+            expr_type,
+            id_token.line,
+            id_token.column
+        )
+        
         self.consume(TokenType.SEMICOLON, "Se esperaba ';' después de la asignación")
 
     def if_stmt(self) -> None:
         """IfStmt → 'if' '(' Expression ')' Statement ['else' Statement]"""
-        self.consume(TokenType.IF, "Se esperaba 'if'")
+        if_token = self.consume(TokenType.IF, "Se esperaba 'if'")
         self.consume(TokenType.LPAREN, "Se esperaba '(' después de 'if'")
-        self.expression()
+        
+        # Verificar que la condición es de tipo INT
+        cond_type = self.expression()
+        self.semantic_analyzer.check_condition(
+            cond_type,
+            if_token.line,
+            if_token.column
+        )
+        
         self.consume(TokenType.RPAREN, "Se esperaba ')' después de la condición")
+        
+        # Crear nuevo ámbito para el bloque if
+        self.semantic_analyzer.enter_scope()
         self.statement()
+        self.semantic_analyzer.exit_scope()
         
         # Parte else opcional
         if self.match(TokenType.ELSE):
+            self.semantic_analyzer.enter_scope()
             self.statement()
+            self.semantic_analyzer.exit_scope()
 
     def while_stmt(self) -> None:
         """WhileStmt → 'while' '(' Expression ')' Statement"""
-        self.consume(TokenType.WHILE, "Se esperaba 'while'")
+        while_token = self.consume(TokenType.WHILE, "Se esperaba 'while'")
         self.consume(TokenType.LPAREN, "Se esperaba '(' después de 'while'")
-        self.expression()
+        
+        cond_type = self.expression()
+        self.semantic_analyzer.check_condition(
+            cond_type,
+            while_token.line,
+            while_token.column
+        )
+        
         self.consume(TokenType.RPAREN, "Se esperaba ')' después de la condición")
+        
+        self.semantic_analyzer.enter_scope()
         self.statement()
+        self.semantic_analyzer.exit_scope()
 
     def do_while_stmt(self) -> None:
         """DoWhileStmt → 'do' Statement 'while' '(' Expression ')' ';'"""
-        self.consume(TokenType.DO, "Se esperaba 'do'")
+        do_token = self.consume(TokenType.DO, "Se esperaba 'do'")
+        
+        # Crear ámbito para el cuerpo del do-while
+        self.semantic_analyzer.enter_scope()
         self.statement()
+        self.semantic_analyzer.exit_scope()
+        
         self.consume(TokenType.WHILE, "Se esperaba 'while'")
         self.consume(TokenType.LPAREN, "Se esperaba '(' después de 'while'")
-        self.expression()
+        
+        # Verificar que la condición es de tipo INT
+        cond_type = self.expression()
+        self.semantic_analyzer.check_condition(
+            cond_type,
+            do_token.line,
+            do_token.column
+        )
+        
         self.consume(TokenType.RPAREN, "Se esperaba ')' después de la condición")
         self.consume(TokenType.SEMICOLON, "Se esperaba ';' después del do-while")
 
     def return_stmt(self) -> None:
         """ReturnStmt → 'return' [Expression] ';'"""
-        self.consume(TokenType.RETURN, "Se esperaba 'return'")
+        return_token = self.consume(TokenType.RETURN, "Se esperaba 'return'")
         
         # Expresión opcional
+        return_type = None
         if not self.check(TokenType.SEMICOLON):
-            self.expression()
-            
+            return_type = self.expression()
+        
+        # Verificar que el tipo de retorno coincide con la función
+        self.semantic_analyzer.check_return(
+            return_type,
+            return_token.line,
+            return_token.column
+        )
+        
         self.consume(TokenType.SEMICOLON, "Se esperaba ';' después de return")
-    
+
     def function(self) -> None:
         """Function → Type ID '(' ParameterList ')' CompoundStmt"""
         # Obtener tipo de retorno
@@ -643,8 +737,20 @@ class Parser:
 
     def parameter(self) -> None:
         """Parameter → Type ID"""
+        # Obtener el tipo del parámetro
+        param_type = self.get_data_type(self.peek().type)
         self.type()
-        self.consume(TokenType.ID, "Se esperaba un nombre de parámetro")
+        
+        # Obtener el nombre del parámetro
+        param_token = self.consume(TokenType.ID, "Se esperaba un nombre de parámetro")
+        
+        # Registrar el parámetro
+        self.semantic_analyzer.add_parameter(
+            param_type,
+            param_token.value,
+            param_token.line,
+            param_token.column
+        )
 
     def parameter_list_tail(self) -> None:
         """ParameterListTail → ',' Parameter ParameterListTail | ε"""
@@ -652,33 +758,48 @@ class Parser:
             self.parameter()
             self.parameter_list_tail()
 
-    def expression(self) -> None:
+    def expression(self) -> DataType:
         """Expression → LogicExpr"""
         if self.check(TokenType.SCAN_INT) or self.check(TokenType.SCAN_FLOAT) or \
-           self.check(TokenType.SCAN_CHAR):
-            # Manejar funciones de scan como expresiones
-            self.advance()  # Consumir el token de scan
+        self.check(TokenType.SCAN_CHAR):
+            scan_token = self.advance()  # Consumir el token de scan
             self.consume(TokenType.LPAREN, "Se esperaba '(' después de la función scan")
             self.consume(TokenType.RPAREN, "Se esperaba ')' después de scan")
+            
+            # Determinar el tipo de retorno según la función de scan
+            scan_types = {
+                TokenType.SCAN_INT: DataType.INT,
+                TokenType.SCAN_FLOAT: DataType.FLOAT,
+                TokenType.SCAN_CHAR: DataType.CHAR
+            }
+            return scan_types[scan_token.type]
         else:
             # Continuar con el análisis normal de expresiones
-            self.logic_expr()
+            return self.logic_expr()
 
     def io_stmt(self) -> None:
-        """
-        IOStmt → PrintStmt | ScanStmt
-        PrintStmt → PrintFunction '(' Expression ')' ';'
-        ScanStmt → ScanFunction '(' ')' ';'
-        """
-        io_token = self.advance()  # Consumir el token de I/O
-        
+        """IOStmt → PrintStmt | ScanStmt"""
+        io_token = self.advance()
         self.consume(TokenType.LPAREN, f"Se esperaba '(' después de {io_token.value}")
         
-        # Las funciones print requieren una expresión, las scan no
         if io_token.type in {TokenType.PRINT_INT, TokenType.PRINT_FLOAT,
-                           TokenType.PRINT_CHAR, TokenType.PRINT_STR}:
-            self.expression()
+                            TokenType.PRINT_CHAR, TokenType.PRINT_STR}:
+            expr_type = self.expression()
+            # Verificar que el tipo coincide con la función de impresión
+            expected_type = {
+                TokenType.PRINT_INT: DataType.INT,
+                TokenType.PRINT_FLOAT: DataType.FLOAT,
+                TokenType.PRINT_CHAR: DataType.CHAR,
+                TokenType.PRINT_STR: DataType.CHAR,
+            }[io_token.type]
             
+            self.semantic_analyzer.check_types(
+                expected_type,
+                expr_type,
+                io_token.line,
+                io_token.column
+            )
+        
         self.consume(TokenType.RPAREN, f"Se esperaba ')' después de {io_token.value}")
         self.consume(TokenType.SEMICOLON, f"Se esperaba ';' después de {io_token.value}")
 
@@ -686,20 +807,16 @@ class Parser:
         """CompoundStmt → '{' {Statement} '}'"""
         self.consume(TokenType.LBRACE, "Se esperaba '{'")
         
+        # Crear nuevo ámbito
+        self.semantic_analyzer.enter_scope()
+        
         while not self.check(TokenType.RBRACE) and not self.is_at_end():
             self.statement()
-            
-        self.consume(TokenType.RBRACE, "Se esperaba '}'")
-
-    def return_stmt(self) -> None:
-        """ReturnStmt → 'return' [Expression] ';'"""
-        self.consume(TokenType.RETURN, "Se esperaba 'return'")
         
-        # Expresión opcional
-        if not self.check(TokenType.SEMICOLON):
-            self.expression()
-            
-        self.consume(TokenType.SEMICOLON, "Se esperaba ';' después de return")
+        # Salir del ámbito
+        self.semantic_analyzer.exit_scope()
+        
+        self.consume(TokenType.RBRACE, "Se esperaba '}'")
     
     # Métodos auxiliares
     def is_type_token(self, token: Token) -> bool:
