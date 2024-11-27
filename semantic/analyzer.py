@@ -21,7 +21,16 @@ class SemanticAnalyzer:
         if expected == found:
             return
         if expected == DataType.FLOAT and found == DataType.INT:
-            return  # Conversión implícita permitida
+            return  # Conversión implícita permitida de INT a FLOAT
+        
+        # Para el caso de asignaciones numéricas
+        if (expected == DataType.INT and found == DataType.FLOAT):
+            raise SemanticError(
+                f"No se puede asignar {found.name} a {expected.name} sin conversión explícita",
+                line,
+                column
+            )
+        
         raise SemanticError(
             f"Tipo incompatible: se esperaba {expected.name} pero se encontró {found.name}",
             line,

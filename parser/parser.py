@@ -328,7 +328,24 @@ class Parser:
     # Implementación de expresiones (nivel más bajo)
     def expression(self) -> DataType:
         """Expression → LogicExpr"""
-        return self.logic_expr()
+        if self.check(TokenType.SCAN_INT):
+            self.advance()  # Consumir el token de scan
+            self.consume(TokenType.LPAREN, "Se esperaba '(' después de la función scan")
+            self.consume(TokenType.RPAREN, "Se esperaba ')' después de scan")
+            return DataType.INT
+        elif self.check(TokenType.SCAN_FLOAT):
+            self.advance()
+            self.consume(TokenType.LPAREN, "Se esperaba '(' después de la función scan")
+            self.consume(TokenType.RPAREN, "Se esperaba ')' después de scan")
+            return DataType.FLOAT
+        elif self.check(TokenType.SCAN_CHAR):
+            self.advance()
+            self.consume(TokenType.LPAREN, "Se esperaba '(' después de la función scan")
+            self.consume(TokenType.RPAREN, "Se esperaba ')' después de scan")
+            return DataType.CHAR
+        else:
+            # Continuar con el análisis normal de expresiones
+            return self.logic_expr()
 
     def logic_expr(self) -> DataType:
         """LogicExpr → CompExpr LogicExprTail"""
@@ -437,18 +454,14 @@ class Parser:
             
         elif self.match(TokenType.ID):
             id_token = self.previous()
-            
-            # Verificar si es una llamada a función
             if self.check(TokenType.LPAREN):
                 return self.factor_tail(id_token)
             else:
-                # Si no es una llamada a función, verificar inicialización
                 variable = self.semantic_analyzer.check_variable_exists(
                     id_token.value,
                     id_token.line,
                     id_token.column
                 )
-                # Verificar si la variable está inicializada antes de usarla
                 if not variable.initialized:
                     raise SemanticError(
                         f"Variable '{id_token.value}' usada sin inicializar",
@@ -456,6 +469,21 @@ class Parser:
                         id_token.column
                     )
                 return variable.type
+                
+        elif self.match(TokenType.INTEGER_LITERAL):
+            return DataType.INT
+        elif self.match(TokenType.FLOAT_LITERAL):
+            return DataType.FLOAT
+        elif self.match(TokenType.CHAR_LITERAL):
+            return DataType.CHAR
+        elif self.match(TokenType.STRING_LITERAL):
+            return DataType.CHAR
+            
+        raise ParserError(
+            "Se esperaba una expresión",
+            self.peek().line,
+            self.peek().column
+        )
 
     def factor_tail(self, id_token: Token) -> DataType:
         """FactorTail → '(' ArgumentList ')' | ε"""
@@ -551,9 +579,17 @@ class Parser:
         id_token = self.consume(TokenType.ID, "Se esperaba un identificador")
         
         initialized = False
+        expr_type = None
+        
         # Inicialización opcional
         if self.match(TokenType.ASSIGN):
             expr_type = self.expression()
+            if expr_type is None:
+                raise SemanticError(
+                    "No se pudo determinar el tipo de la expresión",
+                    id_token.line,
+                    id_token.column
+                )
             # Verificar compatibilidad de tipos
             self.semantic_analyzer.check_types(
                 data_type,
@@ -588,18 +624,16 @@ class Parser:
         
         # Obtener el tipo de la expresión
         expr_type = self.expression()
+        if expr_type is None:
+            raise SemanticError(
+                "No se pudo determinar el tipo de la expresión",
+                id_token.line,
+                id_token.column
+            )
         
         # Verificar compatibilidad de tipos
         self.semantic_analyzer.check_types(
             variable.type,
-            expr_type,
-            id_token.line,
-            id_token.column
-        )
-        
-        # Marcar la variable como inicializada
-        self.semantic_analyzer.analyze_assignment(
-            id_token.value,
             expr_type,
             id_token.line,
             id_token.column

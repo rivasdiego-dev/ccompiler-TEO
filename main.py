@@ -13,15 +13,15 @@ def test_parser(code: str) -> None:
     
     try:
         # Análisis léxico
-        print("\n1. Análisis Léxico:")
-        print("-"*20)
+        # print("\n1. Análisis Léxico:")
+        # print("-"*20)
         lexer = Lexer(code)
         tokens = lexer.tokenize()
-        for token in tokens:
-            print(f"  {token}")
+        # for token in tokens:
+            # print(f"  {token}")
         
         # Análisis sintáctico y semántico
-        print("\n2. Análisis Sintáctico y Semántico:")
+        print("\nAnálisis Sintáctico y Semántico:")
         print("-"*20)
         semantic_analyzer = SemanticAnalyzer()
         parser = Parser(tokens)
