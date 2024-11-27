@@ -56,15 +56,27 @@ class SemanticAnalyzer:
         self.current_return_type = None
 
     def enter_function(self, return_type: DataType, name: str, line: int, column: int) -> None:
-        """Llamado cuando el parser entra a una función"""
-        func = Function(name, return_type, line=line, column=column)
-        self.symbol_table.enter_function(func)
-        self.current_return_type = return_type
+            """Llamado cuando el parser entra a una función"""
+            func = Function(name, return_type, line=line, column=column)
+            self.symbol_table.enter_function(func)
+            self.current_return_type = return_type
+            self.has_return = False  # Reiniciar el flag
 
     def exit_function(self) -> None:
         """Llamado cuando el parser sale de una función"""
+        # Verificar que la función tiene return si lo necesita
+        if (self.current_return_type != DataType.VOID and 
+            not self.has_return and 
+            self.symbol_table.current_function):
+            raise SemanticError(
+                f"La función '{self.symbol_table.current_function.name}' debe retornar un valor",
+                self.symbol_table.current_function.line,
+                self.symbol_table.current_function.column
+            )
+        
         self.symbol_table.exit_function()
         self.current_return_type = None
+        self.has_return = False
 
     def add_parameter(self, type: DataType, name: str, line: int, column: int) -> None:
         """Llamado cuando el parser procesa un parámetro de función"""

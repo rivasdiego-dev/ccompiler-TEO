@@ -724,6 +724,9 @@ class Parser:
             return_token.column
         )
         
+        # Marcar que la función tiene un return válido
+        self.semantic_analyzer.has_return = True
+        
         self.consume(TokenType.SEMICOLON, "Se esperaba ';' después de return")
 
     def function(self) -> None:
