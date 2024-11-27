@@ -1,10 +1,11 @@
 from lexer.lexer import Lexer
 from parser.parser import Parser
 from utils.error_handler import CompilerError
+from semantic.analyzer import SemanticAnalyzer
 
 def test_parser(code: str) -> None:
     """
-    Prueba el análisis de un programa completo
+    Prueba el análisis completo (léxico, sintáctico y semántico) de un programa
     """
     print("\n" + "="*50)
     print(f"Analizando programa:\n{code}")
@@ -19,12 +20,14 @@ def test_parser(code: str) -> None:
         for token in tokens:
             print(f"  {token}")
         
-        # Análisis sintáctico
-        print("\n2. Análisis Sintáctico:")
+        # Análisis sintáctico y semántico
+        print("\n2. Análisis Sintáctico y Semántico:")
         print("-"*20)
+        semantic_analyzer = SemanticAnalyzer()
         parser = Parser(tokens)
+        semantic_analyzer.analyze(parser)  # Conectar el analizador semántico
         parser.parse()
-        print("✓ Programa sintácticamente correcto")
+        print("✓ Programa sintáctica y semánticamente correcto")
         
     except CompilerError as e:
         print(f"\n❌ Error: {e}")

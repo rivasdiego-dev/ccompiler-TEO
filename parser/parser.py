@@ -437,32 +437,25 @@ class Parser:
             
         elif self.match(TokenType.ID):
             id_token = self.previous()
-            # Verificar que la variable existe
-            variable = self.semantic_analyzer.check_variable_exists(
-                id_token.value,
-                id_token.line,
-                id_token.column
-            )
+            
             # Verificar si es una llamada a función
             if self.check(TokenType.LPAREN):
                 return self.factor_tail(id_token)
-            return variable.type
-            
-        elif self.match(TokenType.INTEGER_LITERAL):
-            return DataType.INT
-        elif self.match(TokenType.FLOAT_LITERAL):
-            return DataType.FLOAT
-        elif self.match(TokenType.CHAR_LITERAL):
-            return DataType.CHAR
-        elif self.match(TokenType.STRING_LITERAL):
-            # Típicamente tratado como array de char o tipo especial
-            return DataType.CHAR
-            
-        raise ParserError(
-            "Se esperaba una expresión",
-            self.peek().line,
-            self.peek().column
-        )
+            else:
+                # Si no es una llamada a función, verificar inicialización
+                variable = self.semantic_analyzer.check_variable_exists(
+                    id_token.value,
+                    id_token.line,
+                    id_token.column
+                )
+                # Verificar si la variable está inicializada antes de usarla
+                if not variable.initialized:
+                    raise SemanticError(
+                        f"Variable '{id_token.value}' usada sin inicializar",
+                        id_token.line,
+                        id_token.column
+                    )
+                return variable.type
 
     def factor_tail(self, id_token: Token) -> DataType:
         """FactorTail → '(' ArgumentList ')' | ε"""
@@ -470,7 +463,7 @@ class Parser:
             arg_types = self.argument_list()
             self.consume(TokenType.RPAREN, "Se esperaba ')'")
             
-            # Verificar la llamada a función
+            # Verificar la llamada a función y obtener su tipo de retorno
             return self.semantic_analyzer.check_function_call(
                 id_token.value,
                 arg_types,

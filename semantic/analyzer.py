@@ -66,7 +66,7 @@ class SemanticAnalyzer:
 
     def declare_variable(self, type: DataType, name: str, initialized: bool, line: int, column: int) -> None:
         """Llamado cuando el parser encuentra una declaración de variable"""
-        var = Variable(name, type, initialized, line, column)
+        var = Variable(name, type, initialized=initialized, line=line, column=column)
         self.symbol_table.define_variable(var)
 
     def check_variable_exists(self, name: str, line: int, column: int) -> Variable:
