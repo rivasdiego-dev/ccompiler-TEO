@@ -1,39 +1,48 @@
+import sys
 from lexer.lexer import Lexer
 from parser.parser import Parser
 from utils.error_handler import CompilerError
 from semantic.analyzer import SemanticAnalyzer
 
-def test_parser(code: str) -> None:
+def compile_file(file_path: str) -> None:
     """
-    Prueba el análisis completo (léxico, sintáctico y semántico) de un programa
+    Compila un archivo fuente completo.
     """
-    print("\n" + "="*50)
-    print(f"Analizando programa:\n{code}")
-    print("="*50)
-    
     try:
+        # Leer el archivo
+        with open(file_path, 'r') as file:
+            code = file.read()
+        
+        print(f"\nCompilando archivo: {file_path}")
+        print("="*50)
+        
         # Análisis léxico
-        # print("\n1. Análisis Léxico:")
-        # print("-"*20)
         lexer = Lexer(code)
         tokens = lexer.tokenize()
-        # for token in tokens:
-            # print(f"  {token}")
         
         # Análisis sintáctico y semántico
         print("\nAnálisis Sintáctico y Semántico:")
         print("-"*20)
         semantic_analyzer = SemanticAnalyzer()
         parser = Parser(tokens)
-        semantic_analyzer.analyze(parser)  # Conectar el analizador semántico
+        semantic_analyzer.analyze(parser)
         parser.parse()
         print("✓ Programa sintáctica y semánticamente correcto")
         
+    except FileNotFoundError:
+        print(f"Error: No se pudo encontrar el archivo '{file_path}'")
+        sys.exit(1)
     except CompilerError as e:
         print(f"\n❌ Error: {e}")
+        sys.exit(1)
+    except Exception as e:
+        print(f"\n❌ Error inesperado: {e}")
+        sys.exit(1)
 
-def main():
-    # Programas de prueba para el analizador semántico
+def run_tests() -> None:
+    """
+    Ejecuta la suite de pruebas incorporada.
+    """
     test_cases = [
         # 1. Verificación de tipos en asignaciones
         """
@@ -159,13 +168,38 @@ def main():
         """
     ]
     
-    # Prueba cada caso
+    print("="*50)
+    
     for i, code in enumerate(test_cases, 1):
         print(f"\nCaso de prueba #{i}")
         print("="*50)
-        test_parser(code)
-        input("\nPresiona Enter para continuar...")
+        
+        try:
+            # Análisis léxico
+            lexer = Lexer(code)
+            tokens = lexer.tokenize()
+            
+            # Análisis sintáctico y semántico
+            print("\nAnálisis Sintáctico y Semántico:")
+            print("-"*20)
+            semantic_analyzer = SemanticAnalyzer()
+            parser = Parser(tokens)
+            semantic_analyzer.analyze(parser)
+            parser.parse()
+            print("✓ Programa sintáctica y semánticamente correcto")
+            
+        except CompilerError as e:
+            print(f"\n❌ Error: {e}")
+
+def main():
+    if len(sys.argv) == 1:
+        # Sin argumentos, ejecutar suite de pruebas
+        print("No se proporcionó archivo. Ejecutando suite de pruebas...")
+        run_tests()
+    else:
+        # Compilar el archivo proporcionado
+        file_path = sys.argv[1]
+        compile_file(file_path)
 
 if __name__ == "__main__":
-    print("Pruebas del Analizador Semántico - Presiona Ctrl+C para salir")
     main()
