@@ -16,3 +16,7 @@ class LexicalError(CompilerError):
 class ParserError(CompilerError):
     """Error específico para el análisis sintáctico"""
     pass
+
+class SemanticError(CompilerError):
+    """Error específico para el análisis semántico"""
+    pass
