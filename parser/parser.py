@@ -326,108 +326,175 @@ class Parser:
             raise e
     
     # Implementación de expresiones (nivel más bajo)
-    def expression(self) -> None:
+    def expression(self) -> DataType:
         """Expression → LogicExpr"""
-        self.logic_expr()
+        return self.logic_expr()
 
-    def logic_expr(self) -> None:
+    def logic_expr(self) -> DataType:
         """LogicExpr → CompExpr LogicExprTail"""
-        self.comp_expr()
-        self.logic_expr_tail()
+        expr_type = self.comp_expr()
+        return self.logic_expr_tail(expr_type)
 
-    def logic_expr_tail(self) -> None:
+    def logic_expr_tail(self, left_type: DataType) -> DataType:
         """LogicExprTail → ('&&' | '||') CompExpr LogicExprTail | ε"""
         if self.match(TokenType.AND, TokenType.OR):
-            self.comp_expr()
-            self.logic_expr_tail()
+            operator = self.previous()
+            right_type = self.comp_expr()
+            
+            # Verificar que ambos operandos sean de tipo INT
+            self.verify_type_compatibility(DataType.INT, left_type, operator)
+            self.verify_type_compatibility(DataType.INT, right_type, operator)
+            
+            # Expresiones lógicas siempre retornan INT
+            result_type = DataType.INT
+            return self.logic_expr_tail(result_type)
+        return left_type
 
-    def comp_expr(self) -> None:
+    def comp_expr(self) -> DataType:
         """CompExpr → AddExpr CompExprTail"""
-        self.add_expr()
-        self.comp_expr_tail()
+        expr_type = self.add_expr()
+        return self.comp_expr_tail(expr_type)
 
-    def comp_expr_tail(self) -> None:
+    def comp_expr_tail(self, left_type: DataType) -> DataType:
         """CompExprTail → ('==' | '!=' | '<' | '<=' | '>' | '>=') AddExpr CompExprTail | ε"""
         if self.match(TokenType.EQUALS, TokenType.NOT_EQUALS,
-                     TokenType.LESS, TokenType.LESS_EQUAL,
-                     TokenType.GREATER, TokenType.GREATER_EQUAL):
-            self.add_expr()
-            self.comp_expr_tail()
+                    TokenType.LESS, TokenType.LESS_EQUAL,
+                    TokenType.GREATER, TokenType.GREATER_EQUAL):
+            operator = self.previous()
+            right_type = self.add_expr()
+            
+            # Verificar compatibilidad de tipos
+            if not self.semantic_analyzer.can_compare(left_type, right_type):
+                raise SemanticError(
+                    f"No se pueden comparar tipos {left_type.name} y {right_type.name}",
+                    operator.line,
+                    operator.column
+                )
+            
+            # Comparaciones siempre retornan INT
+            result_type = DataType.INT
+            return self.comp_expr_tail(result_type)
+        return left_type
 
-    def add_expr(self) -> None:
+    def add_expr(self) -> DataType:
         """AddExpr → MultExpr AddExprTail"""
-        self.mult_expr()
-        self.add_expr_tail()
+        expr_type = self.mult_expr()
+        return self.add_expr_tail(expr_type)
 
-    def add_expr_tail(self) -> None:
+    def add_expr_tail(self, left_type: DataType) -> DataType:
         """AddExprTail → ('+' | '-') MultExpr AddExprTail | ε"""
         if self.match(TokenType.PLUS, TokenType.MINUS):
-            self.mult_expr()
-            self.add_expr_tail()
+            operator = self.previous()
+            right_type = self.mult_expr()
+            
+            # Obtener el tipo resultante de la operación
+            result_type = self.semantic_analyzer.get_operation_type(
+                left_type,
+                operator.type,
+                right_type,
+                operator.line,
+                operator.column
+            )
+            
+            return self.add_expr_tail(result_type)
+        return left_type
 
-    def mult_expr(self) -> None:
+    def mult_expr(self) -> DataType:
         """MultExpr → Factor MultExprTail"""
-        self.factor()
-        self.mult_expr_tail()
+        expr_type = self.factor()
+        return self.mult_expr_tail(expr_type)
 
-    def mult_expr_tail(self) -> None:
+    def mult_expr_tail(self, left_type: DataType) -> DataType:
         """MultExprTail → ('*' | '/') Factor MultExprTail | ε"""
         if self.match(TokenType.TIMES, TokenType.DIVIDE):
-            self.factor()
-            self.mult_expr_tail()
+            operator = self.previous()
+            right_type = self.factor()
+            
+            result_type = self.semantic_analyzer.get_operation_type(
+                left_type,
+                operator.type,
+                right_type,
+                operator.line,
+                operator.column
+            )
+            
+            return self.mult_expr_tail(result_type)
+        return left_type
 
-    def factor(self) -> None:
+    def factor(self) -> DataType:
         """
         Factor → '(' Expression ')'
-               | ID FactorTail
-               | INTEGER_LITERAL
-               | FLOAT_LITERAL
-               | CHAR_LITERAL
-               | STRING_LITERAL
+            | ID FactorTail
+            | INTEGER_LITERAL
+            | FLOAT_LITERAL
+            | CHAR_LITERAL
+            | STRING_LITERAL
         """
         if self.match(TokenType.LPAREN):
-            self.expression()
+            expr_type = self.expression()
             self.consume(TokenType.RPAREN, "Se esperaba ')'")
+            return expr_type
+            
         elif self.match(TokenType.ID):
-            self.factor_tail()
-        elif self.match(TokenType.INTEGER_LITERAL,
-                       TokenType.FLOAT_LITERAL,
-                       TokenType.CHAR_LITERAL,
-                       TokenType.STRING_LITERAL):
-            # Después de un literal, debe venir un operador o un token de cierre
-            if not self.is_at_end() and \
-               not self.is_operator(self.peek()) and \
-               not self.is_closing_token(self.peek()):
-                raise ParserError(
-                    f"Se esperaba un operador después de '{self.previous().value}'",
-                    self.peek().line,
-                    self.peek().column
-                )
-        else:
-            raise ParserError(
-                "Se esperaba una expresión",
-                self.peek().line,
-                self.peek().column
+            id_token = self.previous()
+            # Verificar que la variable existe
+            variable = self.semantic_analyzer.check_variable_exists(
+                id_token.value,
+                id_token.line,
+                id_token.column
             )
-    
-    def factor_tail(self) -> None:
+            # Verificar si es una llamada a función
+            if self.check(TokenType.LPAREN):
+                return self.factor_tail(id_token)
+            return variable.type
+            
+        elif self.match(TokenType.INTEGER_LITERAL):
+            return DataType.INT
+        elif self.match(TokenType.FLOAT_LITERAL):
+            return DataType.FLOAT
+        elif self.match(TokenType.CHAR_LITERAL):
+            return DataType.CHAR
+        elif self.match(TokenType.STRING_LITERAL):
+            # Típicamente tratado como array de char o tipo especial
+            return DataType.CHAR
+            
+        raise ParserError(
+            "Se esperaba una expresión",
+            self.peek().line,
+            self.peek().column
+        )
+
+    def factor_tail(self, id_token: Token) -> DataType:
         """FactorTail → '(' ArgumentList ')' | ε"""
         if self.match(TokenType.LPAREN):
-            self.argument_list()
+            arg_types = self.argument_list()
             self.consume(TokenType.RPAREN, "Se esperaba ')'")
-
-    def argument_list(self) -> None:
-        """ArgumentList → Expression ArgumentListTail | ε"""
-        if not self.check(TokenType.RPAREN):
-            self.expression()
-            self.argument_list_tail()
-
-    def argument_list_tail(self) -> None:
-        """ArgumentListTail → ',' Expression ArgumentListTail | ε"""
-        if self.match(TokenType.COMMA):
-            self.expression()
-            self.argument_list_tail()
             
+            # Verificar la llamada a función
+            return self.semantic_analyzer.check_function_call(
+                id_token.value,
+                arg_types,
+                id_token.line,
+                id_token.column
+            )
+        return DataType.VOID
+
+    def argument_list(self) -> List[DataType]:
+        """ArgumentList → Expression ArgumentListTail | ε"""
+        arg_types = []
+        if not self.check(TokenType.RPAREN):
+            arg_types.append(self.expression())
+            arg_types.extend(self.argument_list_tail())
+        return arg_types
+
+    def argument_list_tail(self) -> List[DataType]:
+        """ArgumentListTail → ',' Expression ArgumentListTail | ε"""
+        arg_types = []
+        if self.match(TokenType.COMMA):
+            arg_types.append(self.expression())
+            arg_types.extend(self.argument_list_tail())
+        return arg_types
+
     # Statements
 
     def statement(self) -> None:
