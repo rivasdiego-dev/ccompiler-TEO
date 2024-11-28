@@ -1,12 +1,85 @@
 # Compilador de C Simplificado
 
-[![Estado del Proyecto](https://img.shields.io/badge/estado-en%20desarrollo-yellow.svg)]()
-[![Python](https://img.shields.io/badge/python-3.8+-blue.svg)]()
-[![Licencia](https://img.shields.io/badge/licencia-MIT-green.svg)]()
+![Static Badge](https://img.shields.io/badge/estado-en_revisi%C3%B3n-blue)
+![Python](https://img.shields.io/badge/python-3.8+-blue.svg)
+![anytree](https://img.shields.io/badge/anytree-2.8.0-blue.svg)
+![Licencia](https://img.shields.io/badge/licencia-MIT-green.svg)
 
 ## Descripción del Proyecto
 
-Este proyecto implementa un compilador para un subconjunto del lenguaje C estándar, desarrollado como parte del curso de Teoría de Lenguajes de Programación, Ciclo 02/2024. El compilador incluye análisis léxico, sintáctico y semántico, así como generación de código intermedio.
+Este proyecto implementa un compilador para un subconjunto del lenguaje C estándar, desarrollado como parte del curso de Teoría de Lenguajes de Programación, Ciclo 02/2024. El compilador incluye análisis léxico, sintáctico y semántico.
+
+## Estructura del Proyecto
+
+El proyecto está organizado en varios módulos que separan las diferentes responsabilidades del compilador:
+
+```text
+compilador/
+├── lexer/                  # Análisis léxico
+│   ├── lexer.py           # Implementación del analizador léxico
+│   ├── token.py           # Definición de tokens
+│   └── token_type.py      # Tipos de tokens soportados
+│
+├── parser/                 # Análisis sintáctico básico
+│   └── parser.py          # Parser principal sin árbol
+│
+├── parse_tree/            # Análisis sintáctico con árbol
+│   ├── parse_tree.py      # Implementación del árbol de parseo
+│   └── tree_parser.py     # Parser con generación de árbol
+│
+├── semantic/              # Análisis semántico
+│   ├── analyzer.py        # Analizador semántico
+│   ├── symbol_table.py    # Tabla de símbolos
+│   └── types.py          # Sistema de tipos
+│
+├── tests/                 # Casos de prueba
+│   ├── invalid/          # Programas con errores
+│   │   ├── type_error.c
+│   │   ├── undeclared_var.c
+│   │   └── wrong_return.c
+│   └── valid/           # Programas correctos
+│       ├── factorial.c
+│       ├── fibonacci.c
+│       └── hello_world.c
+│
+├── utils/                # Utilidades
+│   └── error_handler.py  # Manejo de errores
+│
+├── main.py              # Punto de entrada para análisis básico
+├── remain.py            # Punto de entrada para análisis con árbol
+├── README.md           # Documentación del proyecto
+└── LICENSE             # Licencia MIT
+```
+
+### Descripción de Componentes
+
+1. **Analizador Léxico (`lexer/`):**
+   - `lexer.py`: Implementa la tokenización del código fuente
+   - `token.py`: Define la estructura de los tokens
+   - `token_type.py`: Enumera todos los tipos de tokens soportados
+
+2. **Analizador Sintáctico (`parser/` y `parse_tree/`):**
+   - `parser.py`: Implementación del parser básico
+   - `parse_tree.py`: Implementación de la estructura del árbol
+   - `tree_parser.py`: Parser que genera el árbol de parseo
+
+3. **Analizador Semántico (`semantic/`):**
+   - `analyzer.py`: Realiza el análisis semántico
+   - `symbol_table.py`: Maneja la tabla de símbolos
+   - `types.py`: Define el sistema de tipos
+
+4. **Pruebas (`tests/`):**
+   - `invalid/`: Programas que deben generar errores
+   - `valid/`: Programas que deben compilar correctamente
+
+5. **Utilidades (`utils/`):**
+   - `error_handler.py`: Sistema de manejo de errores
+
+6. **Archivos Principales:**
+   - `main.py`: Ejecuta el análisis sin generación de árbol
+   - `remain.py`: Ejecuta el análisis con generación de árbol
+   - `README.md`: Documentación completa del proyecto
+   - `LICENSE`: Términos de la licencia MIT
 
 ## Gramática Formal LL(1)
 
@@ -239,3 +312,74 @@ Para verificar que una gramática es LL(1), se deben cumplir tres condiciones:
 2. **No ambigüedad**: Asegurada mediante la factorización y el manejo específico de casos como el dangling else.
 
 3. **Conjuntos FIRST disjuntos**: Para cada no terminal A, si A → α | β son dos producciones diferentes, entonces FIRST(α) ∩ FIRST(β) = ∅.
+
+## Implementación del Árbol de Parseo
+
+El compilador incluye ahora la capacidad de generar y visualizar el árbol de parseo del programa analizado. Esta funcionalidad permite una mejor comprensión de la estructura sintáctica del código fuente.
+
+### Modos de Ejecución
+
+El compilador ofrece dos modos de operación diferentes:
+
+1. **Análisis Básico (main.py)**
+   - Realiza el análisis léxico, sintáctico y semántico tradicional
+   - No genera visualización del árbol
+
+   ```bash
+   python main.py [archivo_fuente]
+   ```
+
+2. **Análisis con Árbol (remain.py)**
+   - Realiza el análisis completo
+   - Genera una visualización del árbol de parseo
+   - Guarda el árbol en un archivo de texto
+
+   ```bash
+   python remain.py [archivo_fuente]
+   ```
+
+### Requisitos Adicionales
+
+Para utilizar la funcionalidad del árbol de parseo, es necesario instalar la biblioteca `anytree`:
+
+```bash
+pip install anytree
+```
+
+### Estructura del Árbol
+
+El árbol de parseo generado muestra la estructura jerárquica del programa, incluyendo:
+
+- Declaraciones de funciones
+- Parámetros y tipos
+- Expresiones y operaciones
+- Estructuras de control
+- Declaraciones de variables
+- Llamadas a funciones
+
+### Archivos Generados
+
+El árbol de parseo se guarda en archivos con el formato:
+
+- Para archivos individuales: `parser_tree_YYYYMMDD_HHMMSS.txt`
+- Para casos de prueba: `parser_tree_testN_YYYYMMDD_HHMMSS.txt`
+
+Ejemplo de estructura del árbol generado:
+
+```text
+└── Program
+    ├── FunctionList
+    │   └── Function
+    │       ├── Type [void]
+    │       ├── FunctionName [main]
+    │       ├── Parameters
+    │       └── Body
+    │           └── CompoundStatement
+    │               ├── Statement
+    │               │   └── Declaration
+    │               │       ├── Type [int]
+    │               │       └── Identifier [x]
+    │               └── ...
+```
+
+La visualización del árbol permite una mejor comprensión de cómo el compilador interpreta la estructura del código fuente, facilitando la depuración y el análisis del programa.
