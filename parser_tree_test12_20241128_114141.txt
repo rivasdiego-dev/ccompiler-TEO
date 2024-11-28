@@ -1,0 +1,146 @@
+Program
+└── FunctionList
+    └── Function
+        ├── Function
+        │   ├── Type [int]
+        │   ├── FunctionName [factorial]
+        │   ├── Parameters
+        │   │   └── ParameterList
+        │   │       └── Parameter
+        │   │           ├── Type [int]
+        │   │           └── Identifier [n]
+        │   └── Body
+        │       └── CompoundStatement
+        │           ├── LeftBrace [{]
+        │           ├── Statement
+        │           │   └── Statement
+        │           │       └── IfStatement
+        │           │           ├── If [if]
+        │           │           ├── Condition
+        │           │           │   └── Expression
+        │           │           │       └── LogicExpr
+        │           │           │           └── CompExpr
+        │           │           │               ├── AddExpr
+        │           │           │               │   └── MultExpr
+        │           │           │               │       └── Factor
+        │           │           │               │           └── Identifier [n]
+        │           │           │               └── ComparisonOperation
+        │           │           │                   ├── Operator [<=]
+        │           │           │                   └── AddExpr
+        │           │           │                       └── MultExpr
+        │           │           │                           └── Factor
+        │           │           │                               └── IntegerLiteral [1]
+        │           │           └── Then
+        │           │               └── Statement
+        │           │                   └── CompoundStatement
+        │           │                       ├── LeftBrace [{]
+        │           │                       ├── Statement
+        │           │                       │   └── Statement
+        │           │                       │       └── ReturnStatement
+        │           │                       │           ├── Return [return]
+        │           │                       │           ├── ReturnValue
+        │           │                       │           │   └── Expression
+        │           │                       │           │       └── LogicExpr
+        │           │                       │           │           └── CompExpr
+        │           │                       │           │               └── AddExpr
+        │           │                       │           │                   └── MultExpr
+        │           │                       │           │                       └── Factor
+        │           │                       │           │                           └── IntegerLiteral [1]
+        │           │                       │           └── Semicolon [;]
+        │           │                       └── RightBrace [}]
+        │           └── Statement
+        │               ├── Statement
+        │               │   └── ReturnStatement
+        │               │       ├── Return [return]
+        │               │       └── ReturnValue
+        │               │           ├── Expression
+        │               │           │   └── LogicExpr
+        │               │           │       └── CompExpr
+        │               │           │           └── AddExpr
+        │               │           │               └── MultExpr
+        │               │           │                   ├── Factor
+        │               │           │                   │   └── Identifier [n]
+        │               │           │                   └── MultOperation
+        │               │           │                       ├── Operator [*]
+        │               │           │                       └── Factor
+        │               │           │                           ├── Identifier [factorial]
+        │               │           │                           └── FunctionCall
+        │               │           │                               └── Arguments
+        │               │           │                                   └── ArgumentList
+        │               │           │                                       └── Argument
+        │               │           │                                           └── Expression
+        │               │           │                                               └── LogicExpr
+        │               │           │                                                   └── CompExpr
+        │               │           │                                                       └── AddExpr
+        │               │           │                                                           ├── MultExpr
+        │               │           │                                                           │   └── Factor
+        │               │           │                                                           │       └── Identifier [n]
+        │               │           │                                                           └── AddOperation
+        │               │           │                                                               ├── Operator [-]
+        │               │           │                                                               └── MultExpr
+        │               │           │                                                                   └── Factor
+        │               │           │                                                                       └── IntegerLiteral [1]
+        │               │           └── Semicolon [;]
+        │               └── RightBrace [}]
+        └── Function
+            ├── MainFunction
+            └── Function
+                ├── Type [void]
+                ├── FunctionName [main]
+                ├── Parameters
+                │   └── ParameterList
+                └── Body
+                    └── CompoundStatement
+                        ├── LeftBrace [{]
+                        ├── Statement
+                        │   └── Statement
+                        │       └── Declaration
+                        │           ├── Type [int]
+                        │           ├── Identifier [num]
+                        │           ├── Initialization
+                        │           │   └── Expression
+                        │           │       └── LogicExpr
+                        │           │           └── CompExpr
+                        │           │               └── AddExpr
+                        │           │                   └── MultExpr
+                        │           │                       └── Factor
+                        │           │                           └── IntegerLiteral [5]
+                        │           └── Semicolon [;]
+                        ├── Statement
+                        │   └── Statement
+                        │       └── IOStatement
+                        │           ├── IOFunction [printStr]
+                        │           ├── Value
+                        │           │   └── Expression
+                        │           │       └── LogicExpr
+                        │           │           └── CompExpr
+                        │           │               └── AddExpr
+                        │           │                   └── MultExpr
+                        │           │                       └── Factor
+                        │           │                           └── StringLiteral ["El factorial es: "]
+                        │           └── Semicolon [;]
+                        └── Statement
+                            ├── Statement
+                            │   └── IOStatement
+                            │       ├── IOFunction [printInt]
+                            │       └── Value
+                            │           ├── Expression
+                            │           │   └── LogicExpr
+                            │           │       └── CompExpr
+                            │           │           └── AddExpr
+                            │           │               └── MultExpr
+                            │           │                   └── Factor
+                            │           │                       ├── Identifier [factorial]
+                            │           │                       └── FunctionCall
+                            │           │                           └── Arguments
+                            │           │                               └── ArgumentList
+                            │           │                                   └── Argument
+                            │           │                                       └── Expression
+                            │           │                                           └── LogicExpr
+                            │           │                                               └── CompExpr
+                            │           │                                                   └── AddExpr
+                            │           │                                                       └── MultExpr
+                            │           │                                                           └── Factor
+                            │           │                                                               └── Identifier [num]
+                            │           └── Semicolon [;]
+                            └── RightBrace [}]
