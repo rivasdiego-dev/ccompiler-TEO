@@ -24,9 +24,6 @@ class TreeParser:
             return self.tree
         except ParserError as e:
             raise e
-        except Exception as e:
-            current_token = self.peek()
-            raise ParserError(str(e), current_token.line, current_token.column)
 
     # Program and functions
 
