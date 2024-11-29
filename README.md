@@ -1,8 +1,8 @@
 # Compilador de C Simplificado
 
 ![Static Badge](https://img.shields.io/badge/estado-en_revisi%C3%B3n-blue)
-![Python](https://img.shields.io/badge/python-3.8+-blue.svg)
-![anytree](https://img.shields.io/badge/anytree-2.8.0-blue.svg)
+![Python](https://img.shields.io/badge/python-3.11+-blue.svg)
+![anytree](https://img.shields.io/badge/anytree-2.12.1+-blue.svg)
 ![Licencia](https://img.shields.io/badge/licencia-MIT-green.svg)
 
 ## Descripción del Proyecto

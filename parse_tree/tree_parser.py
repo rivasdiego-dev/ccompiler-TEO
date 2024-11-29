@@ -393,24 +393,29 @@ class TreeParser:
         self.tree.move_to(expr_node)
         
         try:
-            if self.check(TokenType.SCAN_INT):
-                scan_node = self.tree.add_child("ScanInt", self.advance())
+            if self.check(TokenType.SCAN_INT) or self.check(TokenType.SCAN_FLOAT) or \
+            self.check(TokenType.SCAN_CHAR):
+                scan_node = self.tree.add_child("ScanOperation")
+                self.tree.move_to(scan_node)
+                
+                scan_token = self.advance()
+                self.tree.add_child("ScanFunction", scan_token)
                 self.consume(TokenType.LPAREN, "Se esperaba '(' después de la función scan")
                 self.consume(TokenType.RPAREN, "Se esperaba ')' después de scan")
+                
+                scan_types = {
+                    TokenType.SCAN_INT: DataType.INT,
+                    TokenType.SCAN_FLOAT: DataType.FLOAT,
+                    TokenType.SCAN_CHAR: DataType.CHAR
+                }
+                
+                # Marcar que este es un valor válido de inicialización
+                scan_type = scan_types[scan_token.type]
+                self.tree.add_child("ReturnType", Token(None, scan_type.name, scan_token.line, scan_token.column))
+                
                 self.tree.move_to_parent()
-                return DataType.INT
-            elif self.check(TokenType.SCAN_FLOAT):
-                scan_node = self.tree.add_child("ScanFloat", self.advance())
-                self.consume(TokenType.LPAREN, "Se esperaba '(' después de la función scan")
-                self.consume(TokenType.RPAREN, "Se esperaba ')' después de scan")
                 self.tree.move_to_parent()
-                return DataType.FLOAT
-            elif self.check(TokenType.SCAN_CHAR):
-                scan_node = self.tree.add_child("ScanChar", self.advance())
-                self.consume(TokenType.LPAREN, "Se esperaba '(' después de la función scan")
-                self.consume(TokenType.RPAREN, "Se esperaba ')' después de scan")
-                self.tree.move_to_parent()
-                return DataType.CHAR
+                return scan_type
             else:
                 result_type = self.logic_expr()
                 self.tree.move_to_parent()
@@ -821,6 +826,64 @@ class TreeParser:
             
             self.tree.add_child("Semicolon", 
                 self.consume(TokenType.SEMICOLON, "Se esperaba ';' después de la declaración"))
+            
+            self.tree.move_to_parent()
+        except:
+            self.tree.move_to_parent()
+            raise
+
+    def assignment_stmt(self) -> None:
+        """AssignmentStmt → ID '=' Expression ';'"""
+        assign_node = self.tree.add_child("Assignment")
+        self.tree.move_to(assign_node)
+        
+        try:
+            # Identificador
+            id_token = self.consume(TokenType.ID, "Se esperaba un identificador")
+            self.tree.add_child("Identifier", id_token)
+            
+            # Operador de asignación
+            assign_token = self.consume(TokenType.ASSIGN, "Se esperaba '=' después del identificador")
+            self.tree.add_child("Operator", assign_token)
+            
+            # Verificar que la variable existe
+            variable = self.semantic_analyzer.check_variable_exists(
+                id_token.value,
+                id_token.line,
+                id_token.column
+            )
+            
+            # Expresión
+            expr_node = self.tree.add_child("Expression")
+            self.tree.move_to(expr_node)
+            expr_type = self.expression()
+            self.tree.move_to_parent()
+            
+            if expr_type is None:
+                error_node = self.tree.add_child("TypeError")
+                self.tree.add_child("Message", Token(None,
+                    "No se pudo determinar el tipo de la expresión",
+                    id_token.line, id_token.column))
+                raise SemanticError(
+                    "No se pudo determinar el tipo de la expresión",
+                    id_token.line,
+                    id_token.column
+                )
+            
+            # Verificar compatibilidad de tipos
+            self.semantic_analyzer.check_types(
+                variable.type,
+                expr_type,
+                id_token.line,
+                id_token.column
+            )
+            
+            # Marcar la variable como inicializada después de la asignación con scan
+            variable.initialized = True
+            
+            # Punto y coma
+            semicolon_token = self.consume(TokenType.SEMICOLON, "Se esperaba ';' después de la asignación")
+            self.tree.add_child("Semicolon", semicolon_token)
             
             self.tree.move_to_parent()
         except:
