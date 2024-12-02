@@ -184,8 +184,12 @@ def run_tests() -> None:
         
         try:
             # Análisis léxico
+            print("\n1. Análisis Léxico:")
+            print("-"*20)
             lexer = Lexer(code)
             tokens = lexer.tokenize()
+            for token in tokens:
+                print(f"  {token}")
             
             # Análisis sintáctico y semántico con árbol
             print("\nAnálisis Sintáctico y Semántico:")
