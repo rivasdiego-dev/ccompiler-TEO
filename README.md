@@ -9,6 +9,59 @@
 
 Este proyecto implementa un compilador para un subconjunto del lenguaje C estándar, desarrollado como parte del curso de Teoría de Lenguajes de Programación, Ciclo 02/2024. El compilador incluye análisis léxico, sintáctico y semántico.
 
+## Delimitación del Lenguaje
+
+El lenguaje implementado es una versión simplificada de C con las siguientes características y limitaciones:
+
+### Tipos de Datos
+- Tipos básicos soportados: `int`, `float`, `char`, `void`
+- No se soportan tipos compuestos (structs, unions)
+- No se soportan punteros ni referencias
+- No se soportan arreglos
+
+### Control de Flujo
+- Estructuras soportadas: `if`, `else`, `while`, `do-while`
+- No se soportan: `for`, `switch`, `break`, `continue`, `goto`
+- `return` solo puede devolver tipos básicos
+
+### Funciones
+- Funciones con múltiples parámetros
+- Recursividad permitida
+- No se soporta sobrecarga de funciones
+- No se soportan funciones variádicas
+- Todas las funciones deben declararse antes de su uso
+- Debe existir una función `main` como punto de entrada
+
+### Variables
+- Solo variables de tipos básicos
+- Ámbito de variables global y local
+- Shadowing permitido en bloques anidados
+- No se soportan variables estáticas
+- No se soportan modificadores `const`, `volatile`, etc.
+
+### Simplificaciones de E/S
+
+El lenguaje implementa un sistema simplificado de entrada/salida con funciones predefinidas:
+
+#### Funciones de Salida
+- `printInt(int x)`: Imprime un número entero
+- `printFloat(float x)`: Imprime un número de punto flotante
+- `printChar(char x)`: Imprime un carácter
+- `printStr(char* s)`: Imprime una cadena de caracteres
+
+#### Funciones de Entrada
+- `scanInt()`: Lee un número entero desde la entrada estándar
+- `scanFloat()`: Lee un número de punto flotante
+- `scanChar()`: Lee un carácter
+
+Características de las funciones de E/S:
+- No requieren inclusión de bibliotecas
+- Son funciones built-in del lenguaje
+- No soportan formato string como printf/scanf
+- Los tipos de datos deben coincidir exactamente (no hay conversión implícita)
+- No se maneja el buffer de entrada
+- No se manejan errores de formato en la entrada
+
 ## Estructura del Proyecto
 
 El proyecto está organizado en varios módulos que separan las diferentes responsabilidades del compilador:
