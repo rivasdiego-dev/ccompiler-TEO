@@ -47,7 +47,7 @@ El lenguaje implementa un sistema simplificado de entrada/salida con funciones p
 - `printInt(int x)`: Imprime un número entero
 - `printFloat(float x)`: Imprime un número de punto flotante
 - `printChar(char x)`: Imprime un carácter
-- `printStr(char* s)`: Imprime una cadena de caracteres
+- `printStr(stringLit s)`: Imprime un tipo literal de String
 
 #### Funciones de Entrada
 - `scanInt()`: Lee un número entero desde la entrada estándar
